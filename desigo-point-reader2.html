@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desigo CC Dashboard</title>
+<style>
+  :root {
+    --bg:#f3f5f4; --panel:#ffffff; --ink:#17211e; --muted:#5d6b66; --line:#d5dcd9;
+    --accent:#0b6b5c; --crit:#c62828; --high:#e07b00; --med:#b59a00; --low:#2e7d9a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#10181a; --panel:#182225; --ink:#e6eeeb; --muted:#97a7a1; --line:#2b3a3d;
+            --accent:#4cc3ad; --crit:#ff6b6b; --high:#ffa94d; --med:#e3cf5a; --low:#6cc3e0; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.5 "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+  .wrap { width:100%; max-width:none; margin:0; padding:24px clamp(12px, 2vw, 32px) 48px; }
+  h1 { font-size:1.5rem; margin:0 0 16px; font-weight:650; }
+  .ptitle { font-size:1.1rem; font-weight:650; margin:0 0 10px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px; margin-bottom:16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  label { display:block; font-size:.85rem; color:var(--muted); margin-bottom:3px; }
+  input, select, textarea { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:4px;
+          background:var(--bg); color:var(--ink); font:inherit; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px; }
+  button { padding:8px 16px; border-radius:4px; border:1px solid var(--accent); background:var(--accent);
+           color:#fff; font:inherit; font-weight:600; cursor:pointer; }
+  @media (prefers-color-scheme: dark) { button { color:#06201b; } }
+  button.ghost { background:transparent; color:var(--accent); }
+  .status { color:var(--muted); font-size:.9rem; white-space:pre-line; }
+  .status.err { color:var(--crit); }
+  .row .opts { order:5; flex:1 1 100%; display:flex; gap:8px 24px; flex-wrap:wrap; }   /* tick boxes on their own line, so Log out stays level with Connect */
+  .row .status { order:10; flex:1 1 100%; min-width:0; }   /* status gets its own line under the buttons, so Log out stays level with Connect */
+  .tablewrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; min-width:860px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:.85rem; color:var(--muted); font-weight:600; }
+  td.sev { border-left:5px solid var(--low); white-space:nowrap; font-weight:600; }
+  td.sev.crit { border-left-color:var(--crit); } td.sev.high { border-left-color:var(--high); }
+  td.sev.med { border-left-color:var(--med); } td.sev.low { border-left-color:var(--low); }
+  .filters { display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:12px; align-items:end; margin-bottom:14px; }
+  @media (max-width:760px) { .filters { grid-template-columns:1fr 1fr; } }
+  th button { all:unset; cursor:pointer; font-weight:600; color:var(--muted); }
+  th button:hover { color:var(--ink); }
+  th button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  th[aria-sort="ascending"] button::after { content:" \25B2"; font-size:.7em; }
+  th[aria-sort="descending"] button::after { content:" \25BC"; font-size:.7em; }
+  .layout { display:grid; grid-template-columns:250px minmax(0,1fr); gap:18px; }
+  @media (max-width:820px) { .layout { grid-template-columns:1fr; } }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  .layout.no-tree { grid-template-columns:minmax(0,1fr); }
+  .layout.no-tree .tree { display:none; }
+  .tree { border-right:1px solid var(--line); padding-right:12px; max-height:640px; overflow:auto; }
+  @media (max-width:820px) { .tree { border-right:0; border-bottom:1px solid var(--line); padding:0 0 12px; max-height:240px; } }
+  .tree h2 { font-size:.85rem; color:var(--muted); font-weight:600; margin:0 0 6px; }
+  .tree ul { list-style:none; margin:0; padding-left:16px; }
+  .tree > ul { padding-left:0; }
+  .tree .node { display:flex; align-items:center; gap:2px; }
+  .tree button { all:unset; cursor:pointer; border-radius:4px; }
+  .tree button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  .tree .tog { width:20px; text-align:center; color:var(--muted); font-size:.75rem; flex:none; }
+  .tree .spacer { width:20px; flex:none; }
+  .tree .lbl { flex:1; padding:3px 6px; display:flex; justify-content:space-between; gap:8px; }
+  .tree .lbl:hover { background:var(--bg); }
+  .tree .lbl[aria-pressed="true"] { background:var(--accent); color:#fff; }
+  @media (prefers-color-scheme: dark) { .tree .lbl[aria-pressed="true"] { color:#06201b; } }
+  .tree .n { opacity:.75; font-size:.85em; }
+  .lab { display:block; font-size:.85rem; color:var(--muted); margin-bottom:3px; }
+  .ms { position:relative; }
+  .ms summary { list-style:none; cursor:pointer; padding:8px 28px 8px 10px; border:1px solid var(--line); border-radius:4px;
+                background:var(--bg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; position:relative; }
+  .ms summary::-webkit-details-marker { display:none; }
+  .ms summary::after { content:"\25BE"; position:absolute; right:10px; color:var(--muted); }
+  .ms summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .ms .menu { position:absolute; z-index:20; left:0; min-width:100%; max-height:260px; overflow:auto; margin-top:2px;
+              background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:4px; box-shadow:0 4px 14px rgba(0,0,0,.18); }
+  .ms .menu label { display:flex; gap:8px; align-items:center; padding:5px 8px; margin:0; color:var(--ink);
+                    font-size:.95rem; white-space:nowrap; cursor:pointer; border-radius:3px; }
+  .ms .menu label:hover { background:var(--bg); }
+  .ms .menu input { width:auto; margin:0; }
+  .point { display:flex; align-items:center; gap:28px; flex-wrap:wrap; }
+  .pv { font-size:2.2rem; font-weight:650; line-height:1.15; }
+  .pmeta { color:var(--muted); font-size:.9rem; }
+  .pmeta.err { color:var(--crit); }
+  textarea { resize:vertical; min-height:60px; }
+  .hide-adv .adv { display:none; }
+  .ptcell { display:flex; flex-direction:column; }
+  .ptcell textarea { flex:1 1 auto; }   /* auto basis so a height set by dragging the resize handle is respected */
+  /* Wide screens: API base URL, user name and password stacked down the left, the point list as a tall box on the right.
+     With the extra settings shown they go in a middle column and the point list moves to the far right. */
+  @media (min-width:901px) {
+    #connGrid { grid-template-columns:minmax(0,1fr) minmax(0,1.6fr); grid-template-rows:auto auto auto 1fr; }
+    #connGrid .c-base { grid-column:1; grid-row:1; }
+    #connGrid .c-user { grid-column:1; grid-row:2; }
+    #connGrid .c-pass { grid-column:1; grid-row:3; }
+    #connGrid .ptcell { grid-column:2; grid-row:1 / span 4; }
+    #connGrid:not(.hide-adv) { grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr); }
+    #connGrid:not(.hide-adv) .ptcell { grid-column:3; }
+    #connGrid:not(.hide-adv) .a1 { grid-column:2; grid-row:1; }
+    #connGrid:not(.hide-adv) .a2 { grid-column:2; grid-row:2; }
+    #connGrid:not(.hide-adv) .a3 { grid-column:2; grid-row:3; }
+    #connGrid:not(.hide-adv) .a4 { grid-column:2; grid-row:4; }
+    #connGrid .ptcell textarea { min-height:150px; }
+  }
+  .chk { display:flex; gap:8px; align-items:center; color:var(--ink); font-size:.95rem; margin:0 0 12px; cursor:pointer; width:fit-content; }
+  .chk input { width:auto; margin:0; }
+  .pthead { display:flex; gap:22px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .spark { display:block; width:100%; height:36px; margin-top:8px; }
+  .spark polyline { fill:none; stroke:var(--accent); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-linejoin:round; }
+  .tmini { font-size:.8rem; color:var(--muted); margin-top:2px; }
+  .summarybar { display:flex; align-items:center; gap:10px 22px; flex-wrap:wrap; }
+  .summarybar .ptitle { margin:0; }
+  .summary { display:flex; gap:10px; flex-wrap:wrap; flex:1; }
+  .chip { all:unset; cursor:pointer; user-select:none; -webkit-user-select:none; box-sizing:border-box; display:flex; align-items:baseline; gap:8px; padding:6px 14px 6px 12px;
+          border:1px solid var(--line); border-left:5px solid var(--low); border-radius:6px; background:var(--bg); }
+  .chip:hover { background:var(--panel); }
+  .chip:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .chip[aria-pressed="true"] { outline:2px solid var(--accent); outline-offset:-1px; }
+  .chip .n { font-size:1.5rem; font-weight:650; line-height:1.1; }
+  .chip .l { color:var(--muted); font-size:.9rem; }
+  .chip.all { border-left-color:var(--muted); }
+  .chip.crit { border-left-color:var(--crit); } .chip.high { border-left-color:var(--high); }
+  .chip.med { border-left-color:var(--med); } .chip.low { border-left-color:var(--low); }
+  .points.hide-details .pmeta.detail { display:none; }
+  .points.hide-trends .spark, .points.hide-trends .tmini { display:none; }
+  .points { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:12px; }
+  .ptile { border:1px solid var(--line); border-radius:6px; padding:12px; background:var(--bg); min-width:0; }
+  .ptile .lab { overflow-wrap:anywhere; margin-bottom:4px; }
+  .ptile .pv { font-size:1.8rem; }
+  .ptile .pmeta { margin-top:4px; overflow-wrap:anywhere; }
+  .lvhead { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .lvhead h2 { margin:0; font-size:1.1rem; font-weight:650; }
+  .lvsearch { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .lvsearch input { flex:1 1 280px; width:auto; }
+  .lvsearch select { flex:0 0 auto; width:auto; }
+  .tree .rsub { display:block; opacity:.7; font-size:.8em; overflow-wrap:anywhere; }
+  .tree li.res { padding:1px 0; }
+  .browser { display:grid; grid-template-columns:minmax(260px,1fr) minmax(260px,1.2fr); gap:18px; }
+  @media (max-width:820px) { .browser { grid-template-columns:1fr; } }
+  .tree .sub { opacity:.65; font-size:.85em; margin-left:6px; }
+  .tree .lbl > span:first-child { overflow-wrap:anywhere; }
+  .tree .busy, .tree .nerr { padding:2px 6px 2px 26px; font-size:.85rem; color:var(--muted); }
+  .tree .nerr { color:var(--crit); }
+  .kv { display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; margin:0 0 14px; }
+  .kv dt { color:var(--muted); }
+  .kv dd { margin:0; overflow-wrap:anywhere; }
+  .count { color:var(--muted); font-size:.9rem; margin:0 0 8px; }
+  .empty { padding:28px 12px; color:var(--muted); text-align:center; }
+  details summary { cursor:pointer; color:var(--accent); }
+  pre { overflow:auto; max-height:260px; font-size:.8rem; background:var(--bg); padding:10px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Desigo CC Dashboard</h1>
+
+  <section class="panel summarybar" aria-label="Alarm summary">
+    <h2 class="ptitle">Alarm summary</h2>
+    <div class="summary" id="summary"><span class="pmeta">Connect to load alarms.</span></div>
+  </section>
+
+  <section class="panel" aria-label="Point values">
+    <h2 class="ptitle">Points</h2>
+    <div class="pthead">
+      <label class="chk" style="margin:0"><input type="checkbox" id="showDetails"> Show timestamp, quality and ObjectId</label>
+      <label class="chk" style="margin:0"><input type="checkbox" id="showTrends" checked> Show trends</label>
+      <label class="chk" style="margin:0">Trend range
+        <select id="trendRange" style="width:auto"><option value="6">6 hours</option><option value="24" selected>24 hours</option><option value="168">7 days</option></select></label>
+    </div>
+    <div class="points hide-details" id="points"><div class="pmeta">Not loaded yet.</div></div>
+  </section>
+
+  <section class="panel" id="alarmPanel" aria-label="Alarm list">
+    <h2 class="ptitle">Active alarms</h2>
+    <p class="sub" style="margin:-4px 0 14px">Live events from your Desigo CC server. Select a column heading to sort.</p>
+    <div class="layout" id="layout">
+    <nav class="tree" id="treepanel" aria-label="Location tree"><h2>Location</h2><div id="tree"></div></nav>
+    <div>
+    <div class="filters">
+      <div><label for="q">Search</label><input id="q" type="search" placeholder="Alarm, location or cause"></div>
+      <div><span class="lab">Category</span><details class="ms" id="fcat"><summary></summary><div class="menu"></div></details></div>
+      <div><span class="lab">State</span><details class="ms" id="fstate"><summary></summary><div class="menu"></div></details></div>
+      <div><label for="limit">Show</label>
+        <select id="limit"><option value="10" selected>Top 10</option><option value="25">Top 25</option><option value="50">Top 50</option><option value="0">All</option></select></div>
+      <div class="btns"><button id="reset" class="ghost" type="button">Clear filters</button><button id="toggleTree" class="ghost" type="button" aria-controls="treepanel" aria-expanded="true">Hide tree</button></div>
+    </div>
+    <p id="count" class="count" aria-live="polite"></p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th data-key="cat"><button type="button">Category</button></th>
+          <th data-key="name"><button type="button">Alarm</button></th>
+          <th data-key="source"><button type="button">Location</button></th>
+          <th data-key="cause"><button type="button">Cause</button></th>
+          <th data-key="state"><button type="button">State</button></th>
+          <th data-key="time"><button type="button">Raised</button></th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="6" class="empty">Enter your connection details and select Connect.</td></tr></tbody>
+      </table>
+    </div>
+    </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Logical view browser">
+    <div class="lvhead">
+      <h2>Logical view browser</h2>
+      <label class="chk" style="margin:0"><input type="checkbox" id="lvAll"> Include other view types</label>
+      <button id="lvReload" class="ghost" type="button">Reload views</button>
+      <span id="lvMsg" class="status" role="status" aria-live="polite"></span>
+    </div>
+    <div class="lvsearch">
+      <input id="lvQ" type="search" placeholder="Search the views, e.g. Cmn03 or TOa (* and ? wildcards work)" aria-label="Search the logical views">
+      <select id="lvOpt" aria-label="Search in"><option value="0">In designation</option><option value="1">In description (location)</option><option value="2">In ObjectId</option></select>
+      <button id="lvGo" type="button">Search</button>
+      <button id="lvClear" class="ghost" type="button">Clear</button>
+    </div>
+    <div class="browser">
+      <div class="tree" id="lvTree"><div class="pmeta">Connect to load the views.</div></div>
+      <div id="lvDetail"><div class="pmeta">Select an item to see its details.</div></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Connection settings">
+    <div class="grid hide-adv" id="connGrid">
+      <div class="c-base"><label for="base">API base URL</label>
+        <input id="base" value="https://mpi.btlnz.co.nz:443/WSI/api" autocomplete="off"></div>
+      <div class="c-user"><label for="user">User name</label>
+        <input id="user" autocomplete="username"></div>
+      <div class="c-pass"><label for="pass">Password</label>
+        <input id="pass" type="password" autocomplete="current-password"></div>
+      <div class="ptcell"><label for="pointId">Point designations (one per line)</label>
+        <textarea id="pointId" rows="6" autocomplete="off" spellcheck="false">System1.FnP:FnP.B02.Cmn03.TOa
+System1.FnP:FnP.B02.Cmn03.HuOa
+System1.FnP:FnP.B04.Cmn01.TOa
+System1.FnP:FnP.B04.PltL1.CwGrp12.HExg1.TFlSec
+System1.FnP:FnP.B04.PltL1.CwGrp20.HExg2.TFlSec
+System1.FnP:FnP.B04.PltL1.PuSecChw.TFl</textarea></div>
+      <div class="adv a1"><label for="alarmPath">Events endpoint</label>
+        <input id="alarmPath" value="/events" autocomplete="off"></div>
+      <div class="adv a2"><label for="tokenPath">Token endpoint</label>
+        <input id="tokenPath" value="/token" autocomplete="off"></div>
+      <div class="adv a3"><label for="pointPath">Value endpoint ({id} = point ID)</label>
+        <input id="pointPath" value="/values/{id}" autocomplete="off"></div>
+      <div class="adv a4"><label for="refresh">Auto-refresh (seconds, 0 = off)</label>
+        <input id="refresh" type="number" min="0" value="30"></div>
+    </div>
+    <div class="row">
+      <button id="go">Connect and load alarms</button>
+      <button id="stop" class="ghost" type="button">Stop refresh</button>
+      <button id="saveSet" class="ghost" type="button" title="Save the API base URL and point list to an .ini file">Save settings</button>
+      <button id="loadSet" class="ghost" type="button" title="Load the API base URL and point list from an .ini file">Load settings</button>
+      <input type="file" id="loadFile" accept=".ini,.txt" hidden>
+      <div class="opts">
+        <label class="chk" style="margin:0" title="The password is written to the file as plain text, so keep the file somewhere private."><input type="checkbox" id="saveLogin"> Include user name and password</label>
+        <label class="chk" style="margin:0"><input type="checkbox" id="showAdv"> Show endpoints and auto-refresh settings</label>
+      </div>
+      <span id="status" class="status" role="status" aria-live="polite">Not connected.</span>
+      <button id="logout" class="ghost" type="button" style="margin-left:auto">Log out</button>
+    </div>
+  </section>
+
+  <details class="panel">
+    <summary>Raw API response</summary>
+    <pre id="raw">Nothing loaded yet.</pre>
+    <p class="status">Point value response:</p>
+    <pre id="rawPoint">Nothing loaded yet.</pre>
+  </details>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let token = null, timer = null;
+
+  const setStatus = (msg, isErr) => { $("status").textContent = msg; $("status").className = "status" + (isErr ? " err" : ""); };
+  const join = (base, path) => base.replace(/\/+$/, "") + "/" + path.replace(/^\/+/, "");
+
+  // OAuth2 password grant (Desigo CC Web Service Interface issues bearer tokens this way)
+  let tokenPromise = null, tokenExpiry = Infinity, signInFailures = 0;
+
+  const SIGNIN_HINTS = {
+    400: "The server did not accept the sign-in request. Check the token endpoint and that a user name and password are entered.",
+    401: "The user name or password was not accepted.",
+    403: "The server understood the request but refused it. Possible causes: the account is locked or disabled, it lacks web service permission, the limit on logins was reached (Desigo CC allows 10 for non-licensed clients and 40 for licensed ones, and a session that is not logged out stays open until it times out after about 10 minutes of inactivity), or a firewall or reverse proxy blocked the request. If it only happens sometimes, check the Desigo CC and web server logs for this time.",
+    404: "The token endpoint was not found. Check the API base URL and the token endpoint.",
+    429: "Too many requests were sent. Wait a moment before trying again."
+  };
+
+  // Turn a failed sign-in response into a message that says what the server returned
+  async function signInError(res) {
+    let body = "";
+    try { body = (await res.text()).trim(); } catch (e) { /* ignore */ }
+    let detail = body;
+    try {
+      const j = JSON.parse(body);
+      detail = [j.error, j.error_description, j.Message, j.message, j.ExceptionMessage].filter(Boolean).join(": ") || body;
+    } catch (e) { detail = body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(); }
+    if (detail.length > 300) detail = detail.slice(0, 300) + "…";
+    const extra = [];
+    const retry = res.headers.get("Retry-After"), auth = res.headers.get("WWW-Authenticate");
+    if (retry) extra.push("Retry-After: " + retry);
+    if (auth) extra.push("WWW-Authenticate: " + auth);
+    signInFailures++;
+    const hint = SIGNIN_HINTS[res.status] || (res.status >= 500 ? "The server reported an internal error. Try again shortly and check the server logs." : "");
+    return new Error([
+      "Sign-in failed: HTTP " + res.status + (res.statusText ? " " + res.statusText : "") + " at " + new Date().toLocaleTimeString() +
+        " (failure " + signInFailures + " this session).",
+      detail ? "Server said: " + detail : "The server sent no message.",
+      extra.join(" · "),
+      hint,
+      "Auto-refresh will try to sign in again."
+    ].filter(Boolean).join("\n"));
+  }
+
+  // One sign-in at a time: parallel callers share the same request, so a burst of
+  // reads can't send several sign-ins at once (servers may refuse or lock out repeated attempts).
+  function getToken() {
+    if (tokenPromise) return tokenPromise;
+    tokenPromise = (async () => {
+      let res;
+      try {
+        res = await fetch(join($("base").value, $("tokenPath").value), {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ grant_type: "password", username: $("user").value, password: $("pass").value }).toString()
+        });
+      } catch (e) { throw new TypeError("Sign-in request could not reach the server (" + e.message + ")."); }
+      if (!res.ok) throw await signInError(res);
+      let data = {};
+      try { data = await res.json(); } catch (e) { /* handled below */ }
+      if (!data.access_token) throw new Error("Sign-in succeeded (HTTP " + res.status + ") but the response had no access_token.");
+      token = data.access_token;
+      tokenExpiry = data.expires_in ? Date.now() + Math.max(0, Number(data.expires_in) - 30) * 1000 : Infinity;
+      signInFailures = 0;
+    })().finally(() => { tokenPromise = null; });
+    return tokenPromise;
+  }
+
+  async function getAlarms(retry) {
+    const res = await fetch(join($("base").value, $("alarmPath").value), {
+      headers: { "Authorization": "Bearer " + token, "Accept": "application/json" }
+    });
+    if (res.status === 401 && !retry) { await getToken(); return getAlarms(true); }
+    if (!res.ok) throw new Error("Alarm request failed (HTTP " + res.status + ").");
+    return res.json();
+  }
+
+  async function getJson(path, retry) {
+    const res = await fetch(path, { headers: { "Authorization": "Bearer " + token, "Accept": "application/json" } });
+    if (res.status === 401 && !retry) { await getToken(); return getJson(path, true); }
+    if (!res.ok) { const err = new Error("HTTP " + res.status); err.status = res.status; throw err; }
+    return res.json();
+  }
+
+  // Find the first object that carries a Value, searching a few levels deep
+  function findValue(o, depth = 0) {
+    if (o === null || typeof o !== "object" || depth > 3) return null;
+    if (Array.isArray(o)) { for (const x of o) { const r = findValue(x, depth + 1); if (r) return r; } return null; }
+    if ("Value" in o || "value" in o) {
+      const inner = o.Value !== undefined ? o.Value : o.value;
+      if (inner !== null && typeof inner === "object") { const r = findValue(inner, depth + 1); if (r) return Object.assign({}, o, r); }
+      return o;
+    }
+    for (const k of Object.keys(o)) { const r = findValue(o[k], depth + 1); if (r) return r; }
+    return null;
+  }
+
+  // Hrefs in the API are relative to the site root (e.g. "api/tables/categories/6")
+  const resolveHref = h => $("base").value.replace(/\/api\/?$/, "/") + h.replace(/^\/+/, "");
+
+  // Look inside an object response for a link or property that leads to the point's value
+  function findValueRef(o, depth = 0) {
+    if (o === null || typeof o !== "object" || depth > 4) return null;
+    if (Array.isArray(o)) { for (const x of o) { const r = findValueRef(x, depth + 1); if (r) return r; } return null; }
+    if (typeof o.Href === "string" && /values?\//i.test(o.Href)) return { href: o.Href };
+    const nm = String(o.Name || o.name || "");
+    if (/^(present_?value|value)$/i.test(nm) && (o.Id || o.id)) return { id: o.Id || o.id };
+    for (const k of Object.keys(o)) { const r = findValueRef(o[k], depth + 1); if (r) return r; }
+    return null;
+  }
+
+  // An object's values response may list several properties: prefer Present_Value / Value
+  function pickValue(d) {
+    const out = [];
+    (function walk(o, depth) {
+      if (o === null || typeof o !== "object" || depth > 4) return;
+      if (Array.isArray(o)) { o.forEach(x => walk(x, depth + 1)); return; }
+      if ("Value" in o || "value" in o) {
+        const inner = o.Value !== undefined ? o.Value : o.value;
+        if (inner !== null && typeof inner === "object") { const r = findValue(inner); if (r) out.push(Object.assign({}, o, r)); }
+        else out.push(o);
+        return;
+      }
+      Object.values(o).forEach(v => walk(v, depth + 1));
+    })(d, 0);
+    const named = out.find(o => /(present_?value|_value|^value$)/i.test(String(o.Name || o.PropertyName || o.PropertyId || o.Id || "")));
+    return named || out[0] || null;
+  }
+
+  // Value service returns an array of ValueDetails: [{ Value: { Value, Quality, QualityGood, Timestamp }, PropertyName, ErrorCode, ... }]
+  function valueDetails(d) {
+    const arr = Array.isArray(d) ? d : [d];
+    const x = arr.find(i => i && i.PropertyName === "Present_Value") || arr.find(i => i && i.Value !== undefined);
+    if (!x) return null;
+    if (x.ErrorCode) throw new Error("the server reported error code " + x.ErrorCode);
+    const inner = x.Value !== null && typeof x.Value === "object" ? x.Value : { Value: x.Value };
+    return { Value: inner.Value, Timestamp: inner.Timestamp, Quality: inner.QualityGood === undefined ? inner.Quality : (inner.QualityGood ? "Good" : "Bad") };
+  }
+
+  const objIds = new Map();     // designation -> ObjectId, so refreshes skip the lookup
+  const unitInfo = new Map();   // ObjectId -> { unit, res }, fetched once
+
+  // ---- Trends -----------------------------------------------------------------
+  // GET /trendseriesinfo/{ObjectId} lists the trend collectors for a point (empty or 404 = not trended).
+  // GET /trendseries/{TrendseriesId}?from=&to=&intervals= returns { Series: [{ Value, Quality, QualityGood, Timestamp }] }.
+  const trendCache = new Map();   // ObjectId -> { tsid (undefined = unknown, null = not trended), hours, at, trend }
+
+  async function getTrend(objectId) {
+    const hours = Number($("trendRange").value) || 24, base = $("base").value, enc = encodeURIComponent;
+    const c = trendCache.get(objectId) || { tsid: undefined, hours: 0, at: 0, trend: null };
+    trendCache.set(objectId, c);
+    if (c.hours === hours && Date.now() - c.at < 120000) return c.trend;   // refresh a trend at most every 2 minutes
+    c.hours = hours; c.at = Date.now(); c.trend = null;
+    try {
+      if (c.tsid === undefined) {
+        const info = await getJson(join(base, "/trendseriesinfo/" + enc(objectId)));
+        const list = Array.isArray(info) ? info : [];
+        const pick = list.find(x => x.PropertyName === "Present_Value") || list[0];
+        c.tsid = pick && pick.TrendseriesId ? pick.TrendseriesId : null;
+      }
+      if (c.tsid) {
+        const to = new Date(), from = new Date(to.getTime() - hours * 3600 * 1000);
+        const d = await getJson(join(base, "/trendseries/" + enc(c.tsid) + "?from=" + enc(from.toISOString()) + "&to=" + enc(to.toISOString()) + "&intervals=80"));
+        const pts = ((d && d.Series) || [])
+          .filter(x => x.QualityGood !== false && x.Value !== "" && x.Value !== null && x.Value !== undefined)
+          .map(x => ({ t: new Date(x.Timestamp).getTime(), v: Number(x.Value) }))
+          .filter(x => isFinite(x.t) && isFinite(x.v)).sort((a, b) => a.t - b.t);
+        if (pts.length >= 2) { const vs = pts.map(x => x.v); c.trend = { pts, min: Math.min(...vs), max: Math.max(...vs), hours }; }
+      }
+    } catch (e) { if (e.status === 404 || e.status === 400) c.tsid = null; /* other errors: try again next time */ }
+    return c.trend;
+  }
+
+  function sparkline(trend, unit) {
+    const NS = "http://www.w3.org/2000/svg", W = 200, H = 36, pad = 3;
+    const t0 = trend.pts[0].t, span = Math.max(1, trend.pts[trend.pts.length - 1].t - t0), vr = trend.max - trend.min;
+    const xy = trend.pts.map(p => {
+      const x = (p.t - t0) / span * (W - 2 * pad) + pad;
+      const y = vr ? H - pad - (p.v - trend.min) / vr * (H - 2 * pad) : H / 2;
+      return x.toFixed(1) + "," + y.toFixed(1);
+    }).join(" ");
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "spark"); svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("role", "img");
+    const range = trend.hours === 168 ? "7 days" : trend.hours + " hours";
+    const f = v => String(Math.round(v * 100) / 100);
+    const label = "Trend over the last " + range + ": low " + f(trend.min) + (unit ? " " + unit : "") + ", high " + f(trend.max) + (unit ? " " + unit : "");
+    svg.setAttribute("aria-label", label);
+    const pl = document.createElementNS(NS, "polyline"); pl.setAttribute("points", xy); svg.appendChild(pl);
+    const cap = document.createElement("div"); cap.className = "tmini"; cap.textContent = label.replace("Trend over the last ", "Last ").replace(": low ", ": ").replace(", high ", " to ");
+    return [svg, cap];
+  }
+
+  // Read one point: designation -> ObjectId -> value (+ unit). Never throws; errors go in the result.
+  async function readPoint(input) {
+    const out = { input, value: "–", unit: "", meta: "", err: false, raw: null, trend: null };
+    const enc = encodeURIComponent, base = $("base").value;
+    const valuesUrl = (pid, suffix = "") => join(base, $("pointPath").value.replace("{id}", enc(pid) + suffix));
+    const tried = []; let last = null, shown = null, objectId = "", fromCache = false;
+    try {
+      // 1) Designation -> ObjectId. An ObjectId typed in is used as is.
+      if (/^System\d+:/i.test(input)) objectId = input;
+      else if (objIds.has(input)) { objectId = objIds.get(input); fromCache = true; }
+      else { objectId = (await resolveObjectId(input)).objectId; objIds.set(input, objectId); }
+
+      // 2) GET /values/{ObjectId} returns the default property; if that gives nothing, ask for Present_Value explicitly
+      const bare = objectId.replace(/^System\d+:/i, "");
+      const urls = [valuesUrl(objectId), valuesUrl(objectId, ".Present_Value"), valuesUrl(bare, ".Present_Value"), valuesUrl(bare)];
+      let o = null;
+      for (const url of urls) {
+        const short = url.replace(base, "");
+        try { shown = await getJson(url); }
+        catch (e) { last = e; tried.push(short + " (" + e.message + ")"); continue; }
+        try { o = valueDetails(shown) || pickValue(shown); }
+        catch (e) { last = e; tried.push(short + " (" + e.message + ")"); continue; }
+        if (o) break;
+        tried.push(short + " (OK, but no value in response)");
+      }
+      out.raw = { ObjectId: objectId, Response: shown };
+      if (!o) { if (fromCache) objIds.delete(input); throw new Error(last ? last.message : "no value in the response"); }
+
+      // 3) Unit and display resolution come from the property value service (the value service has neither)
+      if (!unitInfo.has(objectId)) {
+        try {
+          const pv = await getJson(join(base, "/propertyvalues/" + enc(objectId)));
+          const props = (Array.isArray(pv) ? pv : [pv]).flatMap(x => (x && x.Properties) || []);
+          const p = props.find(x => x.PropertyName === "Present_Value") || props[0];
+          unitInfo.set(objectId, {
+            unit: (p && p.UnitDescriptor) || "",
+            res: p && Number.isInteger(p.Resolution) && p.Resolution >= 0 && p.Resolution <= 6 ? p.Resolution : null
+          });
+        } catch (e) { /* no unit this time; try again on the next refresh */ }
+      }
+      const ui = unitInfo.get(objectId) || { unit: "", res: null };
+
+      let v = o.Value;
+      if (v !== undefined && v !== null && v !== "" && !isNaN(Number(v)))
+        v = ui.res !== null ? Number(v).toFixed(ui.res) : Math.round(Number(v) * 100) / 100;
+      out.value = v === undefined || v === null ? "–" : String(v);
+      out.unit = o.Unit || ui.unit || "";
+      out.trend = $("showTrends").checked ? await getTrend(objectId) : null;   // null when hidden or not trended
+      const ts = o.Timestamp || o.timestamp || "";
+      const q = o.Quality !== undefined ? o.Quality : "";
+      out.meta = [ts ? "Timestamp " + fmtTime(ts) : "", q !== "" ? "Quality " + q : "", "ObjectId " + objectId].filter(Boolean).join(" · ");
+    } catch (e) {
+      out.err = true;
+      out.meta = "Could not read (" + e.message + ")." + (tried.length ? " Tried: " + tried.join("; ") + "." : "");
+    }
+    return out;
+  }
+
+  function makeTile(r, loading) {
+    const t = document.createElement("div"); t.className = "ptile";
+    const lab = document.createElement("div"); lab.className = "lab"; lab.textContent = r.input;
+    const val = document.createElement("div"); val.className = "pv";
+    val.textContent = loading ? "…" : r.value + (r.unit ? " " + r.unit : "");
+    const meta = document.createElement("div"); meta.className = "pmeta" + (r.err ? " err" : loading ? "" : " detail");   // errors always stay visible
+    meta.textContent = loading ? "Loading…" : r.meta;
+    t.append(lab, val);
+    if (!loading && !r.err && r.trend) t.append(...sparkline(r.trend, r.unit));
+    t.append(meta);
+    return t;
+  }
+
+  $("showAdv").addEventListener("change", e => $("connGrid").classList.toggle("hide-adv", !e.target.checked));
+  $("trendRange").addEventListener("change", () => { if (token) loadPoint(); });
+  $("showTrends").addEventListener("change", e => {
+    $("points").classList.toggle("hide-trends", !e.target.checked);
+    $("trendRange").disabled = !e.target.checked;
+    if (e.target.checked && token) loadPoint();   // fetch the trends that were skipped while hidden
+  });
+  $("showDetails").addEventListener("change", e => $("points").classList.toggle("hide-details", !e.target.checked));
+
+  let pointsKey = "";
+  async function loadPoint() {
+    const list = [...new Set($("pointId").value.split(/[\n,]+/).map(x => x.trim()).filter(Boolean))].slice(0, 50);
+    const host = $("points");
+    if (!list.length) { host.textContent = "Enter at least one point designation."; pointsKey = ""; return; }
+    if (pointsKey !== list.join("\n")) {      // new list: show placeholders while loading
+      pointsKey = list.join("\n");
+      host.textContent = "";
+      list.forEach(x => host.appendChild(makeTile({ input: x }, true)));
+    }
+    const results = [];
+    for (let i = 0; i < list.length; i += 5)    // a few at a time to go easy on the server
+      results.push(...await Promise.all(list.slice(i, i + 5).map(readPoint)));
+    host.textContent = "";
+    results.forEach(r => host.appendChild(makeTile(r, false)));   // CSS grid fills across, then down
+    const raw = {}; results.forEach(r => { raw[r.input] = r.raw; });
+    $("rawPoint").textContent = JSON.stringify(raw, null, 2).slice(0, 40000);
+  }
+
+  // ---- Designation -> ObjectId -------------------------------------------------
+  // "System1.FnP:FnP.B02.Cmn03.TOa" = system "System1", view "FnP", path "FnP.B02.Cmn03.TOa".
+  // Method A: the value service accepts a designation and its response carries the ObjectId.
+  // Method B: System Browser. List the view's children of the parent node and match the designation.
+  // Method C: System Browser search on the designation.
+  async function resolveObjectId(desig) {
+    const i = desig.indexOf(":");
+    if (i < 0) throw new Error("A designation looks like System1.FnP:FnP.B02.Cmn03.TOa (view, colon, path).");
+    const left = desig.slice(0, i), path = desig.slice(i + 1);
+    const sysM = left.match(/^System(\d+)/i), sys = sysM ? sysM[1] : "1";
+    const base = $("base").value, enc = encodeURIComponent, want = desig.toLowerCase();
+    const notes = [];
+    const idOf = x => x && (x.ObjectId || (x.Attributes && x.Attributes.ObjectId)) || "";
+    const matchNode = list => idOf((Array.isArray(list) ? list : []).find(x => x && String(x.Designation || "").toLowerCase() === want));
+    const attempt = async (label, fn) => {
+      try { const r = await fn(); if (r) return r; notes.push(label + ": no match"); }
+      catch (e) { notes.push(label + ": " + e.message); }
+      return "";
+    };
+
+    // A) value service by designation
+    let id = await attempt("values", async () => {
+      for (const sfx of ["", ";.Present_Value"]) {
+        try {
+          const d = await getJson(join(base, $("pointPath").value.replace("{id}", enc(desig) + sfx)));
+          const hit = (Array.isArray(d) ? d : [d]).find(x => x && x.ObjectId);
+          if (hit) return hit.ObjectId;
+        } catch (e) { if (sfx) throw e; }
+      }
+      return "";
+    });
+    if (id) return { objectId: id, method: "the value service (by designation)" };
+
+    // find the view ID from the view's designation, e.g. "System1.FnP"
+    let viewId = "";
+    try {
+      const views = await getJson(join(base, "/systembrowser?systemId=" + sys));
+      const v = (Array.isArray(views) ? views : []).find(x => String(x.Designation || "").toLowerCase() === left.toLowerCase());
+      viewId = v ? String(v.ViewId) : "";
+      if (!viewId) notes.push("views: no view named " + left);
+    } catch (e) { notes.push("views: " + e.message); }
+
+    if (viewId) {
+      // B) children of the parent node
+      const parent = path.split(".").slice(0, -1).join(".");
+      const node = parent ? left + ":" + parent : left;
+      id = await attempt("system browser", async () => matchNode(await getJson(join(base, "/systembrowser/" + sys + "/" + viewId + "/" + enc(node)))));
+      if (id) return { objectId: id, method: "System Browser (view " + viewId + ")" };
+
+      // C) search
+      id = await attempt("search", async () => {
+        const url = join(base, "/systembrowser/" + sys + "/" + viewId + "?searchString=" + enc("*" + path) + "&searchOption=0&caseSensitive=false&groupByParent=false");
+        const d = await getJson(url);
+        return matchNode(d && d.Nodes);
+      });
+      if (id) return { objectId: id, method: "System Browser search (view " + viewId + ")" };
+    }
+    throw new Error("Could not find an ObjectId. " + notes.join("; "));
+  }
+
+  // ---- Logical view browser (System Browser service) ---------------------------
+  // GET /systembrowser lists the views (ViewType 2 = Logical). GET /systembrowser/{systemId}/{viewId}/{node}
+  // lists the children of a view or node, where node is the parent's Designation. Children load when opened.
+  const lv = { roots: [], kids: new Map(), open: new Set(), errs: new Map(), busy: new Set(), sel: null, loaded: false, search: null };
+
+  function lvNode(x, isView) {
+    const a = x.Attributes || {};
+    return {
+      key: x.Designation || ("view" + x.ViewId), designation: x.Designation || "",
+      name: x.Descriptor || x.Name || x.Designation || "(unnamed)",
+      sub: x.Name && x.Name !== x.Descriptor ? x.Name : "",
+      sys: x.SystemId, view: x.ViewId, has: isView || !!x.HasChild,
+      objectId: x.ObjectId || a.ObjectId || "", loc: x.Location || "",
+      info: [a.DisciplineDescriptor, a.TypeDescriptor, a.SubTypeDescriptor].filter(Boolean).join(" · "),
+      isView
+    };
+  }
+
+  async function lvLoadViews() {
+    lv.loaded = true;
+    $("lvMsg").className = "status"; $("lvMsg").textContent = "Loading views…";
+    try {
+      const d = await getJson(join($("base").value, "/systembrowser?systemId=0"));
+      const all = Array.isArray(d) ? d : [];
+      const shown = $("lvAll").checked ? all : all.filter(v => v.ViewType === 2);
+      lv.roots = shown.map(v => lvNode(v, true));
+      lv.kids.clear(); lv.errs.clear(); lv.open.clear(); lv.busy.clear(); lv.sel = null; lv.search = null;
+      $("lvMsg").textContent = shown.length
+        ? shown.length + " view(s)."
+        : (all.length ? "No Logical views found. Tick “Include other view types” to see all " + all.length + "." : "No views returned.");
+      lvRender(); lvDetail();
+    } catch (e) {
+      lv.loaded = false;
+      $("lvMsg").className = "status err"; $("lvMsg").textContent = "Could not load views (" + e.message + ").";
+    }
+  }
+
+  async function lvLoadKids(n) {
+    if (lv.kids.has(n.key)) return true;
+    lv.busy.add(n.key); lvRender();
+    try {
+      const d = await getJson(join($("base").value, "/systembrowser/" + n.sys + "/" + n.view + "/" + encodeURIComponent(n.designation)));
+      lv.kids.set(n.key, (Array.isArray(d) ? d : []).map(x => lvNode(x, false)));
+      lv.errs.delete(n.key);
+      return true;
+    } catch (e) { lv.errs.set(n.key, "Could not load children (" + e.message + ")"); return false; }
+    finally { lv.busy.delete(n.key); }
+  }
+
+  async function lvToggle(n) {
+    if (lv.open.has(n.key)) { lv.open.delete(n.key); lvRender(); return; }
+    lv.open.add(n.key);
+    if (!lv.kids.has(n.key) && !lv.busy.has(n.key)) await lvLoadKids(n);
+    lvRender();
+  }
+
+  // Open the branches down to a node (found by search) and select it. Each level is the child whose
+  // designation the target's designation starts with.
+  async function lvReveal(target) {
+    const root = lv.roots.find(r => r.view === target.view && r.sys === target.sys);
+    if (!root) return false;
+    const tl = target.designation.toLowerCase();
+    let node = root;
+    for (let depth = 0; node.designation.toLowerCase() !== tl; depth++) {
+      if (depth > 40) return false;
+      lv.open.add(node.key);
+      if (!(await lvLoadKids(node))) return false;
+      const next = (lv.kids.get(node.key) || []).find(c => {
+        const d = c.designation.toLowerCase();
+        return d === tl || tl.startsWith(d + ".") || tl.startsWith(d + ":");
+      });
+      if (!next) return false;
+      node = next;
+    }
+    lv.search = null; lv.sel = node;
+    lvRender(); lvDetail();
+    const sel = $("lvTree").querySelector('[aria-pressed="true"]');
+    if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "nearest" });
+    return true;
+  }
+
+  // Search every listed view with GET /systembrowser/{system}/{view}?searchString=...
+  async function lvSearch() {
+    const q = $("lvQ").value.trim(), msg = $("lvMsg");
+    if (!q) { lvClear(); return; }
+    if (!lv.roots.length) { msg.className = "status err"; msg.textContent = "Connect first so the views can load."; return; }
+    msg.className = "status"; msg.textContent = "Searching…";
+    const term = /[*?]/.test(q) ? q : "*" + q + "*";
+    const results = []; let total = 0; const errs = [];
+    for (const r of lv.roots) {
+      try {
+        const url = join($("base").value, "/systembrowser/" + r.sys + "/" + r.view + "?searchString=" + encodeURIComponent(term) +
+          "&searchOption=" + $("lvOpt").value + "&caseSensitive=false&groupByParent=false&size=100&page=1");
+        const d = await getJson(url);
+        const nodes = (d && d.Nodes) || (Array.isArray(d) ? d : []);
+        total += Number(d && d.Total) || nodes.length;
+        nodes.forEach(x => results.push(lvNode(x, false)));
+      } catch (e) { errs.push(r.name + ": " + e.message); }
+    }
+    lv.search = { q, results: results.slice(0, 300), total, errs };
+    lv.sel = null;
+    msg.className = "status" + (errs.length && !results.length ? " err" : "");
+    msg.textContent = results.length + " result(s)" + (total > results.length ? " shown of " + total : "") + (errs.length ? ". Errors: " + errs.join("; ") : ".");
+    lvRender(); lvDetail();
+  }
+
+  function lvClear() {
+    $("lvQ").value = ""; lv.search = null; lv.sel = null;
+    $("lvMsg").className = "status"; $("lvMsg").textContent = lv.roots.length ? lv.roots.length + " view(s)." : "";
+    lvRender(); lvDetail();
+  }
+
+  function lvRenderSearch(host) {
+    const sr = lv.search, keep = host.scrollTop;
+    host.textContent = "";
+    if (!sr.results.length) { const m = document.createElement("div"); m.className = "pmeta"; m.textContent = "Nothing matched “" + sr.q + "”."; host.appendChild(m); return; }
+    const ul = document.createElement("ul");
+    sr.results.forEach(n => {
+      const li = document.createElement("li"); li.className = "res";
+      const b = document.createElement("button"); b.className = "lbl"; b.type = "button"; b.setAttribute("aria-pressed", String(lv.sel === n));
+      const t = document.createElement("span"); t.textContent = n.name;
+      const sub = document.createElement("span"); sub.className = "rsub"; sub.textContent = n.designation;
+      t.appendChild(sub); b.appendChild(t);
+      b.addEventListener("click", () => { lv.sel = n; lvRenderSearch(host); lvDetail(); });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    host.appendChild(ul); host.scrollTop = keep;
+  }
+
+  function lvRender() {
+    const host = $("lvTree");
+    if (lv.search) { lvRenderSearch(host); return; }
+    if (!lv.roots.length) { host.textContent = ""; const m = document.createElement("div"); m.className = "pmeta"; m.textContent = "No views to show."; host.appendChild(m); return; }
+    const build = list => {
+      const ul = document.createElement("ul");
+      list.slice(0, 500).forEach(n => {
+        const li = document.createElement("li"), row = document.createElement("div"); row.className = "node";
+        if (n.has) {
+          const open = lv.open.has(n.key), tg = document.createElement("button");
+          tg.className = "tog"; tg.type = "button"; tg.textContent = open ? "\u25BE" : "\u25B8";
+          tg.setAttribute("aria-expanded", String(open)); tg.setAttribute("aria-label", (open ? "Collapse " : "Expand ") + n.name);
+          tg.addEventListener("click", () => lvToggle(n));
+          row.appendChild(tg);
+        } else { const sp = document.createElement("span"); sp.className = "spacer"; row.appendChild(sp); }
+        const b = document.createElement("button"); b.className = "lbl"; b.type = "button";
+        b.setAttribute("aria-pressed", String(lv.sel === n));
+        const t = document.createElement("span"); t.textContent = n.name;
+        if (n.sub) { const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = n.sub; t.appendChild(sub); }
+        b.appendChild(t);
+        b.addEventListener("click", () => { lv.sel = n; lvRender(); lvDetail(); });
+        row.appendChild(b); li.appendChild(row);
+        if (n.has && lv.open.has(n.key)) {
+          if (lv.busy.has(n.key)) { const m = document.createElement("div"); m.className = "busy"; m.textContent = "Loading…"; li.appendChild(m); }
+          else if (lv.errs.has(n.key)) { const m = document.createElement("div"); m.className = "nerr"; m.textContent = lv.errs.get(n.key); li.appendChild(m); }
+          else if (lv.kids.has(n.key)) {
+            const kids = lv.kids.get(n.key);
+            if (!kids.length) { const m = document.createElement("div"); m.className = "busy"; m.textContent = "No items."; li.appendChild(m); }
+            else li.appendChild(build(kids));
+          }
+        }
+        ul.appendChild(li);
+      });
+      if (list.length > 500) { const li = document.createElement("li"); li.className = "busy"; li.textContent = "Showing the first 500 of " + list.length + " items."; ul.appendChild(li); }
+      return ul;
+    };
+    const keep = host.scrollTop;
+    host.textContent = ""; host.appendChild(build(lv.roots)); host.scrollTop = keep;
+  }
+
+  function lvDetail() {
+    const host = $("lvDetail"); host.textContent = "";
+    const n = lv.sel;
+    if (!n) { const m = document.createElement("div"); m.className = "pmeta"; m.textContent = "Select an item to see its details."; host.appendChild(m); return; }
+    const dl = document.createElement("dl"); dl.className = "kv";
+    [["Name", n.name], ["Short name", n.sub], ["Designation", n.designation], ["Location", n.loc], ["Type", n.info], ["ObjectId", n.objectId]]
+      .filter(r => r[1]).forEach(([k, v]) => {
+        const dt = document.createElement("dt"), dd = document.createElement("dd");
+        dt.textContent = k; dd.textContent = v; dl.append(dt, dd);
+      });
+    host.appendChild(dl);
+    if (n.designation.includes(":")) {
+      const show = document.createElement("button"); show.type = "button"; show.className = "ghost"; show.textContent = "Show in tree";
+      const sn = document.createElement("span"); sn.className = "status"; sn.style.margin = "0 10px 0 10px";
+      show.addEventListener("click", async () => {
+        sn.textContent = "Locating…";
+        const ok = await lvReveal(n);
+        if (!ok) sn.textContent = "Could not locate it in the tree.";
+      });
+      host.append(show, sn);          // nodes below a view have designations like System1.FnP:FnP.B02.Cmn03.TOa
+      const add = document.createElement("button"); add.type = "button"; add.textContent = "Add to point list";
+      const note = document.createElement("span"); note.className = "status"; note.style.marginLeft = "10px";
+      add.addEventListener("click", () => {
+        const ta = $("pointId"), lines = ta.value.split(/[\n,]+/).map(x => x.trim()).filter(Boolean);
+        if (lines.includes(n.designation)) { note.textContent = "Already in the list."; return; }
+        ta.value = lines.concat(n.designation).join("\n"); fitPoints();
+        note.textContent = "Added.";
+        if (token) loadPoint();
+      });
+      host.append(add, note);
+    }
+  }
+
+  $("lvGo").addEventListener("click", lvSearch);
+  $("lvClear").addEventListener("click", lvClear);
+  $("lvQ").addEventListener("keydown", e => { if (e.key === "Enter") lvSearch(); });
+  $("lvAll").addEventListener("change", () => { if (token) lvLoadViews(); });
+  $("lvReload").addEventListener("click", async () => {
+    try { if (!token) await getToken(); await lvLoadViews(); }
+    catch (e) { $("lvMsg").className = "status err"; $("lvMsg").textContent = e.message; }
+  });
+
+  // Grow the point list box to fit its lines (up to a limit). Dragging the resize handle still works afterwards.
+  function fitPoints() {
+    const ta = $("pointId");
+    ta.style.height = "auto";
+    ta.style.height = Math.min(Math.max(ta.scrollHeight + 2, 100), 480) + "px";
+  }
+  $("pointId").addEventListener("input", fitPoints);
+
+  // ---- Save / load settings (.ini) ------------------------------------------------
+  // Saves the API base URL and point list only. The user name and password are not saved.
+  const INI_NAME = "desigo-settings.ini";
+  let iniHandle = null;   // set after the first save in Chrome/Edge so later saves overwrite the same file
+
+  function toIni() {
+    const withLogin = $("saveLogin").checked;
+    const pts = $("pointId").value.split(/[\n,]+/).map(x => x.trim()).filter(Boolean);
+    const lines = ["; Desigo CC alarms page settings", "[Desigo]", "ApiBase=" + $("base").value.trim(), "", "[Points]"]
+      .concat(pts.map((x, i) => "Point" + (i + 1) + "=" + x));
+    if (withLogin) lines.push("", "[Login]", "User=" + $("user").value, "Password=" + $("pass").value);   // plain text
+    return lines.join("\r\n") + "\r\n";
+  }
+
+  function parseIni(text) {
+    const out = { base: "", points: [], user: "", pass: "", hasLogin: false };
+    let section = "";
+    text.split(/\r?\n/).forEach(raw => {
+      const line = raw.trim();
+      if (!line || line[0] === ";" || line[0] === "#") return;
+      const m = line.match(/^\[(.+)\]$/);
+      if (m) { section = m[1].trim().toLowerCase(); return; }
+      const i = line.indexOf("=");
+      if (i < 0) return;
+      const key = line.slice(0, i).trim().toLowerCase(), val = line.slice(i + 1).trim();
+      if (section === "desigo" && key === "apibase") out.base = val;
+      else if (section === "points" && val) out.points.push(val);
+      else if (section === "login" && key === "user") { out.user = val; out.hasLogin = true; }
+      else if (section === "login" && key === "password") { out.pass = val; out.hasLogin = true; }
+    });
+    return out;
+  }
+
+  const loginNote = () => $("saveLogin").checked ? " The user name and password are in the file as plain text, so keep it private." : "";
+
+  async function saveSettings() {
+    const text = toIni();
+    try {
+      if (window.showSaveFilePicker) {
+        try {
+          if (!iniHandle) iniHandle = await window.showSaveFilePicker({ suggestedName: INI_NAME, types: [{ description: "INI file", accept: { "text/plain": [".ini"] } }] });
+          const w = await iniHandle.createWritable(); await w.write(text); await w.close();
+          setStatus("Settings saved to " + iniHandle.name + "." + loginNote());
+          return;
+        } catch (e) { if (e && e.name === "AbortError") return; iniHandle = null; /* fall back to a download */ }
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = INI_NAME;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      setStatus("Settings saved as " + INI_NAME + " (check your Downloads folder)." + loginNote());
+    } catch (e) { setStatus("Could not save settings: " + e.message, true); }
+  }
+
+  async function loadSettingsFile(file) {
+    if (!file) return;
+    try {
+      const cfg = parseIni(await file.text());
+      if (!cfg.base && !cfg.points.length && !cfg.hasLogin) { setStatus("No settings found in " + file.name + ". Expected [Desigo] ApiBase= and [Points] Point1= lines.", true); return; }
+      if (cfg.base && cfg.base !== $("base").value.trim() && token) await logout(true);   // end the session on the old server first
+      if (cfg.base) $("base").value = cfg.base;
+      if (cfg.points.length) { $("pointId").value = cfg.points.join("\n"); fitPoints(); }
+      if (cfg.hasLogin) { $("user").value = cfg.user; $("pass").value = cfg.pass; }
+      iniHandle = null;
+      const got = [cfg.base ? "API base URL" : "", cfg.points.length ? cfg.points.length + " point(s)" : "", cfg.hasLogin ? "user name and password" : ""].filter(Boolean);
+      setStatus("Loaded " + got.join(", ").replace(/, ([^,]*)$/, " and $1") + " from " + file.name + "." + (token ? "" : " Select Connect to use them."));
+      if (token && cfg.points.length) loadPoint();
+    } catch (e) { setStatus("Could not read the settings file: " + e.message, true); }
+  }
+
+  $("saveSet").addEventListener("click", saveSettings);
+  $("loadSet").addEventListener("click", () => $("loadFile").click());
+  $("loadFile").addEventListener("change", e => { loadSettingsFile(e.target.files[0]); e.target.value = ""; });
+
+  // Desigo CC WSI /events returns { "Events": [ ... ] }
+  const asList = d => Array.isArray(d) ? d : (d && d.Events) || [];
+
+  // Site = the text before " - " in the location (e.g. "Fisher and Paykel.Building 01").
+  // Locations without " - " use their first two dot-separated parts. The site is split on "." into tree levels.
+  function siteOf(loc) {
+    const i = loc.indexOf(" - ");
+    const head = i > -1 ? loc.slice(0, i) : loc.split(".").slice(0, 2).join(".");
+    const parts = head.split(".").map(x => x.trim()).filter(Boolean);
+    return parts.length ? parts : ["Unknown"];
+  }
+
+  function normalise(a) {
+    return {
+      catId: Number(a.CategoryId) || 999,
+      cat: a.CategoryDescriptor || "",
+      name: a.SrcDescriptor || a.SrcName || "",
+      source: a.SrcLocation || a.SrcDesignation || "",
+      cause: a.Cause || "",
+      state: [a.State, a.SrcState ? "(" + a.SrcState + ")" : ""].filter(Boolean).join(" "),
+      srcState: a.SrcState || "",
+      time: a.CreationTime || "",
+      site: siteOf(a.SrcLocation || a.SrcDesignation || ""),
+      siteKey: ""
+    };
+  }
+
+  // Colour by category name; adjust to match your category set
+  function cls(cat) {
+    const c = cat.toLowerCase();
+    if (/life|fire|emergency|critical|urgent/.test(c)) return "crit";
+    if (/high/.test(c)) return "high";
+    if (/med/.test(c)) return "med";
+    return "low";
+  }
+
+  function fmtTime(t) { const d = new Date(t); return isNaN(d) ? (t || "–") : d.toLocaleString(); }
+
+  let all = [];
+  let lastLoaded = false;
+  let sort = { key: "cat", dir: 1 };
+  let selSite = "", seeded = false;
+  const expanded = new Set();
+  const inSite = a => !selSite || a.siteKey === selSite || a.siteKey.startsWith(selSite + "|");
+
+  function renderTree() {
+    const root = { kids: new Map(), n: 0 };
+    all.forEach(a => {
+      let node = root; const path = [];
+      a.site.forEach(seg => {
+        path.push(seg);
+        if (!node.kids.has(seg)) node.kids.set(seg, { name: seg, key: path.join("|"), kids: new Map(), n: 0 });
+        node = node.kids.get(seg); node.n++;
+      });
+    });
+    const select = key => { selSite = selSite === key ? "" : key; render(); };
+    const label = (text, count, key) => {
+      const b = document.createElement("button");
+      b.className = "lbl"; b.type = "button"; b.setAttribute("aria-pressed", String(selSite === key));
+      const t = document.createElement("span"); t.textContent = text;
+      const c = document.createElement("span"); c.className = "n"; c.textContent = count;
+      b.append(t, c); b.addEventListener("click", () => select(key)); return b;
+    };
+    const build = map => {
+      const ul = document.createElement("ul");
+      [...map.values()].sort((x, y) => x.name.localeCompare(y.name, undefined, { numeric: true })).forEach(n => {
+        const li = document.createElement("li"), row = document.createElement("div");
+        row.className = "node";
+        if (n.kids.size) {
+          const open = expanded.has(n.key);
+          const tg = document.createElement("button");
+          tg.className = "tog"; tg.type = "button"; tg.textContent = open ? "\u25BE" : "\u25B8";
+          tg.setAttribute("aria-expanded", String(open)); tg.setAttribute("aria-label", (open ? "Collapse " : "Expand ") + n.name);
+          tg.addEventListener("click", () => { open ? expanded.delete(n.key) : expanded.add(n.key); renderTree(); });
+          row.appendChild(tg);
+        } else { const sp = document.createElement("span"); sp.className = "spacer"; row.appendChild(sp); }
+        row.appendChild(label(n.name, n.n, n.key));
+        li.appendChild(row);
+        if (n.kids.size && expanded.has(n.key)) li.appendChild(build(n.kids));
+        ul.appendChild(li);
+      });
+      return ul;
+    };
+    const host = $("tree"); host.textContent = "";
+    if (!all.length) { host.textContent = "No locations yet."; return; }
+    const allRow = document.createElement("div"); allRow.className = "node";
+    const sp = document.createElement("span"); sp.className = "spacer";
+    allRow.append(sp, label("All locations", all.length, ""));
+    host.append(allRow, build(root.kids));
+  }
+
+  const byNew = (x, y) => new Date(y.time) - new Date(x.time);
+  function compare(x, y) {
+    const k = sort.key;
+    let r;
+    if (k === "cat") r = x.catId - y.catId;
+    else if (k === "time") r = new Date(x.time) - new Date(y.time);
+    else r = String(x[k]).localeCompare(String(y[k]), undefined, { numeric: true, sensitivity: "base" });
+    return (r * sort.dir) || byNew(x, y);
+  }
+
+  const selCat = new Set(), selState = new Set();
+
+  function fillMulti(id, values, sel) {
+    const host = $(id), menu = host.querySelector(".menu"), sum = host.querySelector("summary");
+    const opts = [...new Set(values.filter(Boolean))].sort();
+    [...sel].forEach(v => { if (!opts.includes(v)) sel.delete(v); });
+    const setSummary = () => { sum.textContent = sel.size === 0 ? "All" : sel.size === 1 ? [...sel][0] : sel.size + " selected"; };
+    menu.textContent = "";
+    opts.forEach(v => {
+      const l = document.createElement("label"), cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = sel.has(v);
+      cb.addEventListener("change", () => { cb.checked ? sel.add(v) : sel.delete(v); setSummary(); render(); });
+      l.append(cb, document.createTextNode(v)); menu.appendChild(l);
+    });
+    setSummary();
+  }
+  function refillFilters() {
+    fillMulti("fcat", all.map(a => a.cat), selCat);
+    fillMulti("fstate", all.map(a => a.srcState), selState);
+  }
+
+  // One chip per alarm category with its count (all loaded alarms, whatever the table filters are).
+  // Selecting a chip filters the table to that category; "All" clears the category filter.
+  function renderSummary() {
+    const host = $("summary"); host.textContent = "";
+    if (!all.length) {
+      const m = document.createElement("span"); m.className = "pmeta";
+      m.textContent = token || lastLoaded ? "No alarms." : "Connect to load alarms."; host.appendChild(m); return;
+    }
+    const groups = new Map();
+    all.forEach(a => { const g = groups.get(a.cat) || { cat: a.cat, id: a.catId, n: 0 }; g.n++; groups.set(a.cat, g); });
+    const jump = () => {   // scroll to the alarm list (no animation if the user prefers reduced motion)
+      const calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      $("alarmPanel").scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+    };
+    const chip = (cls2, n, label, pressed, onClick) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip " + cls2;
+      b.title = "Click to filter the alarm list. Double-click to filter and jump to it.";
+      b.setAttribute("aria-pressed", String(pressed));
+      const nn = document.createElement("span"); nn.className = "n"; nn.textContent = String(n);
+      const ll = document.createElement("span"); ll.className = "l"; ll.textContent = label;
+      b.append(nn, ll); b.addEventListener("click", e => { onClick(e.detail >= 2); if (e.detail >= 2) jump(); }); host.appendChild(b);
+    };
+    chip("all", all.length, "All alarms", selCat.size === 0, () => { selCat.clear(); refillFilters(); render(); });
+    [...groups.values()].sort((x, y) => x.id - y.id || x.cat.localeCompare(y.cat)).forEach(g => {
+      chip(cls(g.cat), g.n, g.cat || "Uncategorised", selCat.has(g.cat), dbl => {
+        // single click toggles the category; a double click (its first click already toggled it) shows just this category
+        if (dbl) { selCat.clear(); selCat.add(g.cat); }
+        else selCat.has(g.cat) ? selCat.delete(g.cat) : selCat.add(g.cat);
+        refillFilters(); render();
+      });
+    });
+  }
+
+  function render() {
+    renderSummary();
+    renderTree();
+    const q = $("q").value.trim().toLowerCase();
+    const limit = Number($("limit").value);
+    const matches = all.filter(a =>
+      inSite(a) && (!selCat.size || selCat.has(a.cat)) && (!selState.size || selState.has(a.srcState)) &&
+      (!q || (a.name + " " + a.source + " " + a.cause).toLowerCase().includes(q))
+    ).sort(compare);
+    const list = limit ? matches.slice(0, limit) : matches;
+
+    document.querySelectorAll("th[data-key]").forEach(th => {
+      th.setAttribute("aria-sort", th.dataset.key === sort.key ? (sort.dir === 1 ? "ascending" : "descending") : "none");
+    });
+
+    const hiddenSite = selSite && $("layout").classList.contains("no-tree") ? " Location: " + selSite.split("|").join(" \u203A ") + "." : "";
+    $("count").textContent = all.length ? "Showing " + list.length + " of " + matches.length + " matching (" + all.length + " total)." + hiddenSite : "";
+    const tbody = $("rows"); tbody.textContent = "";
+    if (!list.length) {
+      const tr = document.createElement("tr"), td = document.createElement("td");
+      td.colSpan = 6; td.className = "empty";
+      td.textContent = all.length ? "No alarms match these filters." : "No active alarms.";
+      tr.appendChild(td); tbody.appendChild(tr); return;
+    }
+    for (const a of list) {
+      const tr = document.createElement("tr");
+      [a.cat || "–", a.name || "–", a.source || "–", a.cause || "–", a.state || "–", fmtTime(a.time)].forEach((text, i) => {
+        const td = document.createElement("td");
+        td.textContent = String(text);       // textContent avoids injecting markup from the server
+        if (i === 0) td.className = "sev " + cls(a.cat);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function load() {
+    try {
+      setStatus("Loading…");
+      if (token && Date.now() > tokenExpiry) token = null;   // renew shortly before it expires
+      if (!token) await getToken();
+      const pointDone = loadPoint();
+      const data = await getAlarms();
+      $("raw").textContent = JSON.stringify(data, null, 2).slice(0, 20000);
+      all = asList(data).filter(e => !e.Deleted).map(normalise);
+      lastLoaded = true;
+      all.forEach(a => { a.siteKey = a.site.join("|"); });
+      if (!seeded) {
+        all.forEach(a => expanded.add(a.site[0]));
+        if (all.some(a => a.srcState === "Active")) selState.add("Active");   // default state filter
+        seeded = true;
+      }
+      if (selSite && !all.some(inSite)) selSite = "";
+      refillFilters();
+      render();
+      await pointDone;
+      if (!lv.loaded) lvLoadViews();
+      setStatus("Updated " + new Date().toLocaleTimeString() + ".");
+    } catch (e) {
+      const corsHint = e instanceof TypeError ? " The browser could not reach the server: check the URL, the certificate, and that CORS allows this page." : "";
+      setStatus(e.message + corsHint, true);
+    }
+  }
+
+  // DELETE /token ends the session bound to the bearer token (Token Service, "Logging out")
+  async function logout(quiet) {
+    clearInterval(timer);
+    const t = token;
+    if (!t) { if (!quiet) setStatus("Not signed in."); return; }
+    token = null; tokenExpiry = Infinity;
+    try {
+      const res = await fetch(join($("base").value, $("tokenPath").value), { method: "DELETE", headers: { "Authorization": "Bearer " + t } });
+      if (!res.ok) throw new Error("HTTP " + res.status + (res.statusText ? " " + res.statusText : ""));
+      if (!quiet) setStatus("Logged out at " + new Date().toLocaleTimeString() + ". Auto-refresh stopped; select Connect to sign in again.");
+    } catch (e) {
+      if (!quiet) setStatus("The log out request failed (" + e.message + "). This page has dropped its token; the server session expires after a period of inactivity (default 10 minutes).", true);
+    }
+  }
+
+  async function start() {
+    clearInterval(timer);
+    if (token) await logout(true);   // end the previous session first; each sign-in holds a server session
+    load();
+    const s = Number($("refresh").value);
+    if (s > 0) timer = setInterval(load, s * 1000);
+  }
+
+  document.querySelectorAll("th[data-key]").forEach(th => th.querySelector("button").addEventListener("click", () => {
+    const k = th.dataset.key;
+    sort = sort.key === k ? { key: k, dir: -sort.dir } : { key: k, dir: k === "time" ? -1 : 1 };
+    render();
+  }));
+  ["q", "limit"].forEach(id => $(id).addEventListener("input", render));
+  $("reset").addEventListener("click", () => { $("q").value = ""; $("limit").value = "10"; selSite = ""; selCat.clear(); selState.clear(); refillFilters(); render(); });
+  function setTree(show) {
+    $("layout").classList.toggle("no-tree", !show);
+    $("toggleTree").textContent = show ? "Hide tree" : "Show tree";
+    $("toggleTree").setAttribute("aria-expanded", String(show));
+    try { localStorage.setItem("desigoTreeHidden", show ? "0" : "1"); } catch (e) {}
+    if (all.length) render();
+  }
+  $("toggleTree").addEventListener("click", () => setTree($("layout").classList.contains("no-tree")));
+  try { if (localStorage.getItem("desigoTreeHidden") === "1") setTree(false); } catch (e) {}
+
+  document.addEventListener("click", e => {
+    document.querySelectorAll(".ms[open]").forEach(d => { if (!d.contains(e.target)) d.removeAttribute("open"); });
+  });
+  refillFilters();
+  fitPoints();
+  $("go").addEventListener("click", start);
+  $("logout").addEventListener("click", () => logout(false));
+  // Best effort: end the session when the page is closed so it doesn't hold a server session until it times out
+  window.addEventListener("pagehide", () => {
+    if (!token) return;
+    try { fetch(join($("base").value, $("tokenPath").value), { method: "DELETE", headers: { "Authorization": "Bearer " + token }, keepalive: true }); } catch (e) { /* ignore */ }
+  });
+  $("stop").addEventListener("click", () => { clearInterval(timer); setStatus("Auto-refresh stopped."); });
+})();
+</script>
+</body>
+</html>
